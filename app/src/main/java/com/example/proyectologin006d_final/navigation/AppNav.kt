@@ -8,6 +8,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.proyectologin006d_final.ui.login.LoginScreen
+import com.example.proyectologin006d_final.ui.register.RegisterScreen
 import com.example.proyectologin006d_final.ui.profile.ProfileScreen
 import com.example.proyectologin006d_final.ui.catalog.CatalogScreen
 import com.example.proyectologin006d_final.ui.gamification.LevelUpScreen
@@ -22,6 +23,10 @@ fun AppNav() {
     NavHost(navController = navController, startDestination = "login") {
         composable("login") {
             LoginScreen(navController = navController)
+        }
+
+        composable("register") {
+            RegisterScreen(navController = navController)
         }
 
         

@@ -12,7 +12,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.layout.offset
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -24,6 +27,10 @@ import com.example.proyectologin006d_final.ui.theme.LevelUpBlack
 import com.example.proyectologin006d_final.ui.theme.LevelUpBlue
 import com.example.proyectologin006d_final.ui.theme.LevelUpGreen
 import com.example.proyectologin006d_final.ui.theme.LevelUpWhite
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 
 data class ProductCategory(
     val id: String,
@@ -94,11 +101,26 @@ fun CatalogScreen(
                 .fillMaxSize()
                 .background(LevelUpBlack)
         ) {
-            // Header con saludo
+            // Header con saludo y animación decorativa simple
+            var headerFloating by remember { mutableStateOf(false) }
+            val headerOffset by animateFloatAsState(
+                targetValue = if (headerFloating) 5f else 0f,
+                animationSpec = tween(2000),
+                label = "header-offset"
+            )
+            
+            LaunchedEffect(Unit) {
+                while (true) {
+                    headerFloating = !headerFloating
+                    kotlinx.coroutines.delay(2000)
+                }
+            }
+            
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
+                    .padding(16.dp)
+                    .offset(y = headerOffset.dp),
                 colors = CardDefaults.cardColors(containerColor = LevelUpBlue.copy(alpha = 0.2f))
             ) {
                 Column(
@@ -171,11 +193,25 @@ fun CategoryCard(
     category: ProductCategory,
     onClick: () -> Unit
 ) {
+    // Animación simple de escala al presionar
+    val categoryInteraction = remember { MutableInteractionSource() }
+    val categoryPressed by categoryInteraction.collectIsPressedAsState()
+    val categoryScale by animateFloatAsState(
+        targetValue = if (categoryPressed) 0.95f else 1f,
+        animationSpec = tween(durationMillis = 100),
+        label = "category-scale"
+    )
+
     Card(
         modifier = Modifier
             .width(120.dp)
             .height(100.dp)
-            .clickable { onClick() },
+            .scale(categoryScale)
+            .clickable(
+                interactionSource = categoryInteraction,
+                indication = null,
+                onClick = onClick
+            ),
         colors = CardDefaults.cardColors(containerColor = category.color.copy(alpha = 0.2f)),
         shape = RoundedCornerShape(12.dp)
     ) {
@@ -186,9 +222,25 @@ fun CategoryCard(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
+            // Animación decorativa simple para el icono
+            var iconRotating by remember { mutableStateOf(false) }
+            val iconRotation by animateFloatAsState(
+                targetValue = if (iconRotating) 360f else 0f,
+                animationSpec = tween(3000),
+                label = "icon-rotation"
+            )
+            
+            LaunchedEffect(Unit) {
+                while (true) {
+                    iconRotating = !iconRotating
+                    kotlinx.coroutines.delay(3000)
+                }
+            }
+            
             Text(
                 text = category.icon,
-                fontSize = 24.sp
+                fontSize = 24.sp,
+                modifier = Modifier.rotate(iconRotation)
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
@@ -207,10 +259,24 @@ fun ProductCard(
     product: Product,
     onClick: () -> Unit
 ) {
+    // Animación simple de escala al presionar (usa InteractionSource para detectar press)
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (pressed) 0.96f else 1f,
+        animationSpec = tween(durationMillis = 120),
+        label = "press-scale"
+    )
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() },
+            .scale(scale)
+            .clickable(
+                interactionSource = interaction,
+                indication = null,
+                onClick = onClick
+            ),
         colors = CardDefaults.cardColors(containerColor = LevelUpBlack),
         shape = RoundedCornerShape(8.dp)
     ) {
@@ -246,10 +312,26 @@ fun ProductCard(
                     color = LevelUpWhite.copy(alpha = 0.5f)
                 )
             }
+            
+            // Animación decorativa simple para el precio
+            var priceGlowing by remember { mutableStateOf(false) }
+            val priceAlpha by animateFloatAsState(
+                targetValue = if (priceGlowing) 1f else 0.7f,
+                animationSpec = tween(1500),
+                label = "price-alpha"
+            )
+            
+            LaunchedEffect(Unit) {
+                while (true) {
+                    priceGlowing = !priceGlowing
+                    kotlinx.coroutines.delay(1500)
+                }
+            }
+            
             Text(
                 text = product.price,
                 style = MaterialTheme.typography.titleLarge,
-                color = LevelUpBlue,
+                color = LevelUpBlue.copy(alpha = priceAlpha),
                 fontWeight = FontWeight.Bold
             )
         }

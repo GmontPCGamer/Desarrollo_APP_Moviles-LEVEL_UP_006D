@@ -4,7 +4,9 @@ package com.example.proyectologin006d_final.ui.login
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -12,9 +14,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -22,6 +29,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -43,6 +52,17 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.example.proyectologin006d_final.ui.login.LoginUiState
 import com.example.proyectologin006d_final.ui.login.LoginViewModel
+import com.example.proyectologin006d_final.ui.login.LoginViewModelFactory
+import com.example.proyectologin006d_final.data.repository.UserRepository
+import com.example.proyectologin006d_final.data.database.ProductoDatabase
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.alpha
+import androidx.compose.animation.core.animateFloatAsState as animateAlpha
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -50,7 +70,13 @@ import com.example.proyectologin006d_final.ui.login.LoginViewModel
 @Composable  // Genera Interfz Garfica
 
 fun LoginScreen(   navController: NavController,
-                   vm: LoginViewModel = viewModel()
+                   vm: LoginViewModel = viewModel(
+                       factory = LoginViewModelFactory(
+                           UserRepository(
+                               ProductoDatabase.getDatabase(LocalContext.current).userDao()
+                           )
+                       )
+                   )
 ) {
     val state = vm.uiState
     var showPass by remember { mutableStateOf(false) }
@@ -188,19 +214,9 @@ fun LoginScreen(   navController: NavController,
                     )
                 }
 
-                if (state.error != null) {
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        text = state.error ?: "",
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
+                // Espacio antes del botón de login
 
-
-// agregar un espacio entre la imagen y el boton
-
-                Spacer(modifier = Modifier.height(66.dp))
+                Spacer(modifier = Modifier.height(30.dp))
 
                 Button(onClick = {/* accion futura*/
                     if (!isAdultVerified) {
@@ -229,21 +245,87 @@ fun LoginScreen(   navController: NavController,
                     Text(if (state.isLoading) "Validando..." else "Iniciar sesión")
                 } // fin texto Button
                 
-                Spacer(modifier = Modifier.height(5.dp))
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                // Botón de registro con animación
+                val registerButtonInteraction = remember { MutableInteractionSource() }
+                val registerButtonPressed by registerButtonInteraction.collectIsPressedAsState()
+                val registerButtonScale by animateFloatAsState(
+                    targetValue = if (registerButtonPressed) 0.95f else 1f,
+                    animationSpec = tween(durationMillis = 100),
+                    label = "register-button-scale"
+                )
                 
                 TextButton(
-                    onClick = { navController.navigate("register") }
+                    onClick = { navController.navigate("register") },
+                    modifier = Modifier
+                        .fillMaxWidth(0.8f)
+                        .scale(registerButtonScale)
+                        .clickable(
+                            interactionSource = registerButtonInteraction,
+                            indication = null,
+                            onClick = { /* handled by TextButton onClick */ }
+                        )
                 ) {
-                    Text("¿No tienes cuenta? Regístrate")
+                    Text(
+                        text = "¿No tienes cuenta? Regístrate",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Medium
+                    )
                 }
 
             }// fin Contenido
 
         } // Fin inner
-
+        
+        // Overlay de error en el centro de la pantalla
+        if (state.error != null) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth(0.9f)
+                        .padding(20.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(20.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = state.error ?: "",
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Button(
+                            onClick = { vm.clearError() },
+                            colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.error
+                            ),
+                            modifier = Modifier.padding(start = 8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Cerrar",
+                                tint = MaterialTheme.colorScheme.onError,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+                }
+            }
+        }
 
     } // fin Aplicar Material
-}// Fin HomeScreen
+}
 
 
 @Preview(showBackground = true)
@@ -252,8 +334,10 @@ fun LoginScreenPreview() {
     // Crear un navController de manera ficticia para fines de la vista previa
     val navController = rememberNavController()
 
-    // Puedes usar un ViewModel simulado aquí si no tienes acceso a uno real
-    val vm = LoginViewModel() // Suponiendo que LoginViewModel está correctamente configurado para la vista previa
-
-    LoginScreen(navController = navController, vm = vm)
+    // Para el preview, simplemente comentamos el ViewModel ya que requiere Room
+    // val vm = LoginViewModel(mockUserRepository)
+    // LoginScreen(navController = navController, vm = vm)
+    
+    // Preview simplificado sin ViewModel
+    Text("Login Screen Preview - Requiere Room Database")
 }

@@ -1,6 +1,7 @@
 package com.example.proyectologin006d_final.ui.profile
 
-import android.net.Uri
+import android.Manifest
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -13,9 +14,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CameraAlt
-import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -27,6 +29,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -42,11 +45,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
-import com.example.proyectologin006d_final.components.ImagenInteligente
-import java.io.File
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import com.example.proyectologin006d_final.ui.qr.QrScannerScreen
+import com.example.proyectologin006d_final.utils.CameraPermissionHelper
+import com.example.proyectologin006d_final.viewmodel.QrViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -58,42 +59,30 @@ fun ProfileScreen(
     val uiState by vm.uiState.collectAsState()
     val context = LocalContext.current
     
-    // Mantener la imagen seleccionada usando remember
-    var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
-
-    // Crear archivo temporal para la cámara
-    val photoFile = remember {
-        val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
-        File(context.cacheDir, "profile_photo_$timestamp.jpg")
-    }
+    // Estado para controlar si mostrar el escáner QR
+    var showQrScanner by remember { mutableStateOf(false) }
     
-    // Launcher para la galería
-    val galleryLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        selectedImageUri = uri
-        vm.updateImageUri(uri)
-    }
+    // ViewModel para QR
+    val qrViewModel: QrViewModel = viewModel()
     
-    // Launcher para la cámara
-    val cameraLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.TakePicture()
-    ) { success ->
-        if (success) {
-            try {
-                if (photoFile.exists() && photoFile.length() > 0) {
-                    val uri = Uri.fromFile(photoFile)
-                    selectedImageUri = uri
-                    vm.updateImageUri(uri)
-                } else {
-                    vm.setError("Error al capturar la foto")
-                }
-            } catch (e: Exception) {
-                vm.setError("Error al procesar la imagen: ${e.message}")
-            }
+    // Estado para controlar si tenemos permiso de cámara
+    var hasCameraPermission by remember { mutableStateOf(false) }
+    
+    // Launcher para permisos de cámara
+    val requestPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        hasCameraPermission = isGranted
+        if (isGranted) {
+            Toast.makeText(context, "Permiso de cámara concedido", Toast.LENGTH_SHORT).show()
         } else {
-            vm.setError("No se pudo capturar la foto")
+            Toast.makeText(context, "Se necesita permiso de cámara para escanear QR", Toast.LENGTH_LONG).show()
         }
+    }
+    
+    // Verificar permiso inicial
+    LaunchedEffect(Unit) {
+        hasCameraPermission = CameraPermissionHelper.hasCameraPermission(context)
     }
     
     val ColorScheme = darkColorScheme(
@@ -105,28 +94,50 @@ fun ProfileScreen(
     MaterialTheme(colorScheme = ColorScheme) {
         Scaffold(
             topBar = {
-                TopAppBar(
+TopAppBar(
                     title = { 
                         Text(
-                            "Mi Perfil",
+                            if (showQrScanner) "Escáner QR" else "Mi Perfil",
                             color = MaterialTheme.colorScheme.onPrimary
                         )
                     },
                     colors = androidx.compose.material3.TopAppBarDefaults.topAppBarColors(
                         containerColor = MaterialTheme.colorScheme.primary
-                    )
+                    ),
+                    navigationIcon = {
+                        if (showQrScanner) {
+                            androidx.compose.material3.IconButton(
+                                onClick = { showQrScanner = false }
+                            ) {
+                                androidx.compose.material3.Icon(
+                                    imageVector = androidx.compose.material.icons.Icons.Default.ArrowBack,
+                                    contentDescription = "Volver",
+                                    tint = MaterialTheme.colorScheme.onPrimary
+                                )
+                            }
+                        }
+                    }
                 )
             }
         ) { innerPadding ->
-            Column(
-                modifier = Modifier
-                    .padding(innerPadding)
-                    .fillMaxSize()
-                    .padding(16.dp)
-                    .background(Color(0xFFF0F0F0)),
-                verticalArrangement = Arrangement.spacedBy(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
+            if (showQrScanner) {
+                QrScannerScreen(
+                    viewModel = qrViewModel,
+                    hasCameraPermission = hasCameraPermission,
+                    onRequestPermission = {
+                        requestPermissionLauncher.launch(Manifest.permission.CAMERA)
+                    }
+                )
+            } else {
+                Column(
+                    modifier = Modifier
+                        .padding(innerPadding)
+                        .fillMaxSize()
+                        .padding(16.dp)
+                        .background(Color(0xFFF0F0F0)),
+                    verticalArrangement = Arrangement.spacedBy(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
                 // Card con información del usuario
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -155,45 +166,27 @@ fun ProfileScreen(
                     }
                 }
                 
-                // Componente de imagen
-                ImagenInteligente(
-                    imageUri = selectedImageUri ?: uiState.imageUri,
-                    size = 150.dp
-                )
-                
-                // Botones de acción
+                // Botón de acción - Solo escáner QR
                 Column(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Button(
                         onClick = {
-                            galleryLauncher.launch("image/*")
+                            showQrScanner = true
                         },
-                        modifier = Modifier.fillMaxWidth(0.8f)
+                        modifier = Modifier.fillMaxWidth(0.8f),
+                        colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary
+                        )
                     ) {
                         Icon(
-                            imageVector = Icons.Default.PhotoLibrary,
-                            contentDescription = "Galería",
+                            imageVector = Icons.Default.QrCodeScanner,
+                            contentDescription = "Escáner QR",
                             modifier = Modifier.size(20.dp)
                         )
                         Spacer(modifier = Modifier.size(8.dp))
-                        Text("Seleccionar de Galería")
-                    }
-                    
-                    OutlinedButton(
-                        onClick = {
-                            cameraLauncher.launch(Uri.fromFile(photoFile))
-                        },
-                        modifier = Modifier.fillMaxWidth(0.8f)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.CameraAlt,
-                            contentDescription = "Cámara",
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.size(8.dp))
-                        Text("Tomar Foto")
+                        Text("Escanear QR")
                     }
                 }
                 
@@ -222,6 +215,7 @@ fun ProfileScreen(
                     modifier = Modifier.fillMaxWidth(0.6f)
                 ) {
                     Text("Volver")
+                }
                 }
             }
         }

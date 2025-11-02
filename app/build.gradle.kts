@@ -84,6 +84,19 @@ dependencies {
     // Coil para cargar imágenes
     implementation("io.coil-kt:coil-compose:2.5.0")
 
+    // CameraX para funcionalidad de cámara avanzada
+    val camerax_version = "1.3.3"
+    implementation("androidx.camera:camera-core:$camerax_version")
+    implementation("androidx.camera:camera-camera2:$camerax_version")
+    implementation("androidx.camera:camera-lifecycle:$camerax_version")
+    implementation("androidx.camera:camera-view:$camerax_version")
+
+    // ML Kit Barcode Scanning para códigos QR
+    implementation("com.google.mlkit:barcode-scanning:17.2.0")
+
+    // LiveData para Compose
+    implementation("androidx.compose.runtime:runtime-livedata:1.5.4")
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
